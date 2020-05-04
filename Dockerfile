@@ -1,26 +1,16 @@
-FROM golang:1.12-stretch
-
-RUN apt-get update && apt-get install -y \
-  curl \
-  gettext \
-  g++ \
-  git 
+FROM golang:alpine
 
 WORKDIR /code
 
+RUN apk --no-cache add curl bash gettext g++ git
+
 RUN GO111MODULE=on go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.1
 
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY ./SecretsFromVault.go ./
+COPY * ./
 
 RUN go build -buildmode plugin -o /opt/kustomize/plugin/kvSources/SecretsFromVault.so ./SecretsFromVault.go 
 
-FROM debian:stretch-slim
-
-RUN apt-get update && apt-get install -y \
-  git
+FROM alpine
 
 COPY --from=0 /opt/kustomize/plugin/kvSources/SecretsFromVault.so /opt/kustomize/plugin/kustomize.config.realgeeks.com/v1beta1/secretsfromvault/SecretsFromVault.so
 COPY --from=0 /go/bin/kustomize /usr/bin/kustomize
